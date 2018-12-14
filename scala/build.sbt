@@ -11,5 +11,6 @@ lazy val root = (project in file(".")).
       "org.typelevel" %% "spire" % "0.16.0",
       "org.typelevel" %% "cats-core" % "1.2.0",
       "org.scalatest" %% "scalatest" % "3.0.1" % Test,
+      "org.scalacheck" %% "scalacheck" % "1.14.0" % Test
     )
   )

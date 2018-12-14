@@ -29,6 +29,9 @@ case class HasKeyword(value: String) extends Campaign
 case class IsPlacement(value: Placement) extends Campaign
 case class InCountry(country: String) extends Campaign
 
+sealed trait RichCampaign
+case class Within(start: ZonedDateTime, end: ZonedDateTime) extends Campaign
+
 trait CampaignSytax {
   def isAfter(value: ZonedDateTime): FreeBool[Campaign] = Inject(IsAfter(value))
   def isBefore(value: ZonedDateTime): FreeBool[Campaign] =

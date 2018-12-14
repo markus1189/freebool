@@ -78,6 +78,10 @@ object FreeBool {
     override def one: FreeBool[A] = One
   }
 
+  def all[A](as: FreeBool[A]*): FreeBool[A] = as.foldLeft[FreeBool[A]](One)((acc, a) => acc & a)
+
+  def any[A](as: FreeBool[A]*): FreeBool[A] = as.foldLeft[FreeBool[A]](Zero)((acc, a) => acc | a)
+
   /////////////////////////////////////////////////////////////////////////////////////
 
   def run[A, B: Bool, F[_]: Applicative](p: FreeBool[A])(
