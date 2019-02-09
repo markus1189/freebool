@@ -3,6 +3,8 @@ package de.codecentric.freebool
 import cats.instances.int._
 import cats.instances.option._
 import java.time.ZonedDateTime
+
+import cats.Functor
 import spire.std.boolean._
 import spire.syntax.heyting._
 import cats.syntax.functor._
@@ -60,19 +62,19 @@ object Program extends App with CampaignSytax {
 
   val campaign = timeCondition & keywords & isPlacement(Top)
 
-  val pure = campaign.map {
-    case IsAfter(value)     => Zero
-    case IsBefore(value)    => One
-    case HasKeyword(value)  => Zero
-    case IsPlacement(value) => One
-    case InCountry(country) => Zero
-  }
+//  val pure = campaign.map {
+//    case IsAfter(value)     => Zero
+//    case IsBefore(value)    => One
+//    case HasKeyword(value)  => Zero
+//    case IsPlacement(value) => One
+//    case InCountry(country) => Zero
+//  }
 
-  val r = campaign.traverse {
-    case IsAfter(value)     => Some(One)
-    case IsBefore(value)    => Some(One)
-    case HasKeyword(value)  => Some(One)
-    case IsPlacement(value) => None
-    case InCountry(country) => None
-  }
+//  val r = campaign.traverse {
+//    case IsAfter(value)     => Some(One)
+//    case IsBefore(value)    => Some(One)
+//    case HasKeyword(value)  => Some(One)
+//    case IsPlacement(value) => None
+//    case InCountry(country) => None
+//  }
 }

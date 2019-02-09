@@ -36,3 +36,9 @@ fromTo = Inject . FromTo
 campaign = hasKeyword "cybermonday" `xor` hasKeyword "blackweek"
 
 richCampaign = isCyberMonday `xor` isBlackWeek
+
+foo = traverse go richCampaign
+  where go :: RichCampaign -> Either _ Bool
+        go IsCyberMonday = Right True
+        go IsBlackWeek = Right True
+        go p@(FromTo _ _) = Left (Inject p)

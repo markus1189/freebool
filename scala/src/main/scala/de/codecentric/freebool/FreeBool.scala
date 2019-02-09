@@ -1,23 +1,17 @@
 package de.codecentric.freebool
 
-import java.time.ZonedDateTime
-
-import cats.instances.vector._
-import cats.syntax.foldable._
-import scala.collection.immutable.Seq
 import cats.data.Const
-import cats.instances.int._
-import cats.instances.either._
 import cats.syntax.apply._
+import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.traverse._
-import cats.{Applicative, Eval, Monoid, Traverse}
+import cats.{Applicative, Eval, Monad, Monoid, Traverse}
+import de.codecentric.first.First
 import spire.algebra.Bool
 import spire.std.boolean._
 import spire.syntax.heyting._
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Seq
 import scala.language.higherKinds
 
 sealed abstract class FreeBool[+A]
@@ -29,6 +23,39 @@ case class Complement[A](value: FreeBool[A]) extends FreeBool[A]
 case class Inject[A](value: A) extends FreeBool[A]
 
 object FreeBool {
+
+  def one: FreeBool[Nothing] = One
+  def zero: FreeBool[Nothing] = Zero
+  def and[A](lhs: FreeBool[A], rhs: FreeBool[A]): FreeBool[A] = And(lhs, rhs)
+  def or[A](lhs: FreeBool[A], rhs: FreeBool[A]): FreeBool[A] = Or(lhs, rhs)
+  def complement[A](value: FreeBool[A]): FreeBool[A] = Complement(value)
+  def inject[A](value: A): FreeBool[A] = Inject(value)
+
+  implicit val freeBoolMonad: Monad[FreeBool] = new Monad[FreeBool] {
+    override def pure[A](x: A): FreeBool[A] = Inject(x)
+
+    override def map[A, B](fa: FreeBool[A])(f: A => B): FreeBool[B] = fa match {
+      case One               => One
+      case Zero              => Zero
+      case And(lhs, rhs)     => And(map(lhs)(f), map(rhs)(f))
+      case Or(lhs, rhs)      => Or(map(lhs)(f), map(rhs)(f))
+      case Complement(value) => Complement(map(value)(f))
+      case Inject(value)     => Inject(f(value))
+    }
+
+    override def flatMap[A, B](fa: FreeBool[A])(
+        f: A => FreeBool[B]): FreeBool[B] = fa match {
+      case One               => One
+      case Zero              => Zero
+      case And(lhs, rhs)     => And(flatMap(lhs)(f), flatMap(rhs)(f))
+      case Or(lhs, rhs)      => Or(flatMap(lhs)(f), flatMap(rhs)(f))
+      case Complement(value) => Complement(flatMap(value)(f))
+      case Inject(value)     => f(value)
+    }
+
+    override def tailRecM[A, B](a: A)(
+        f: A => FreeBool[Either[A, B]]): FreeBool[B] = ???
+  }
 
   implicit val freeBoolTraverse: Traverse[FreeBool] = new Traverse[FreeBool] {
     override def traverse[G[_], A, B](fa: FreeBool[A])(f: A => G[B])(
@@ -78,9 +105,11 @@ object FreeBool {
     override def one: FreeBool[A] = One
   }
 
-  def all[A](as: FreeBool[A]*): FreeBool[A] = as.foldLeft[FreeBool[A]](One)((acc, a) => acc & a)
+  def all[A](as: FreeBool[A]*): FreeBool[A] =
+    as.foldLeft[FreeBool[A]](One)((acc, a) => acc & a)
 
-  def any[A](as: FreeBool[A]*): FreeBool[A] = as.foldLeft[FreeBool[A]](Zero)((acc, a) => acc | a)
+  def any[A](as: FreeBool[A]*): FreeBool[A] =
+    as.foldLeft[FreeBool[A]](Zero)((acc, a) => acc | a)
 
   /////////////////////////////////////////////////////////////////////////////////////
 
@@ -124,12 +153,14 @@ object FreeBool {
     }
   }
 
-  def partially[A, B: Bool](p: FreeBool[A])(
-      interpret: A => Either[B, FreeBool[A]]): Either[B, FreeBool[A]] =
-    run(p)(interpret)
+  // easily compose "partial" evaluators generated from PF on Lift.fromPf using monoids
+  def partial[A](p: FreeBool[A])(f: A => First[FreeBool[A]]): FreeBool[A] = {
+    p.flatMap(x => f(x).toOption.getOrElse(Monad[FreeBool].pure(x)))
+  }
 
-  def partiallyAll[A, B: Bool](p: FreeBool[A])(fs: Vector[A => Either[B, FreeBool[A]]]): Either[B, FreeBool[A]] = {
-    fs.foldLeftM(p)((acc, f) => partially[A, B](acc)(f))
+  // works, but not compositional (A => First[B]  is better)
+  def partialWithPf[A](p: FreeBool[A])(pf: PartialFunction[A, FreeBool[A]]): FreeBool[A] = {
+    p.flatMap(x => if (pf.isDefinedAt(x)) pf(x) else Inject(x))
   }
 
   def analyze[A, B: Monoid](p: FreeBool[A])(interpret: A => B): B =
